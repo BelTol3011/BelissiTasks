@@ -17,7 +17,6 @@ class AbstractTaskHandler(abc.ABC):
     @abc.abstractmethod
     async def exec_task(self, task: AbstractTask) -> Any:
         """This function should await the task's run() function with any special args and return its result."""
-        ...
 
 
 class TaskQueue:
@@ -35,11 +34,11 @@ class TaskQueue:
         # set the event because we changed task_handler_queues
         self.update_event.set()
 
-    def accept_task(self, task: AbstractTask, type_: type = None) -> Any:
+    def accept_task(self, task: AbstractTask, type_: type = None) -> asyncio.Future:
         """Put a task into the queue and return a Future of its result that can be awaited."""
         type_ = type(task) if type_ is None else type_
 
-        future = asyncio.Future()
+        future = asyncio.get_event_loop().create_future()
 
         # put the task into the queue
         self.task_queues[type_].append((task, future))
@@ -51,19 +50,25 @@ class TaskQueue:
 
     async def _start_task(self, task: AbstractTask, task_type: type, future: asyncio.Future,
                           task_handler: AbstractTaskHandler | None):
-        # start the task
-        if task_handler is None:
-            # if no task_handler is specified, await the task directly without a handler
-            result = await task.run()
-        else:
-            result = await task_handler.exec_task(task=task)
+        try:
+            # start the task
+            if task_handler is None:
+                # if no task_handler is specified, await the task directly without a handler
+                result = await task.run()
+            else:
+                result = await task_handler.exec_task(task=task)
 
-        if task_handler is not None:
-            # make the task_handler available again
-            self.register_task_handler(task_handler, task_type)
+            if task_handler is not None:
+                # make the task_handler available again
+                self.register_task_handler(task_handler, task_type)
 
-        # set the result of the future
-        future.set_result(result)
+            # set the result of the future
+            future.set_result(result)
+        except Exception as e:
+            try:
+                raise Exception(f"During the execution of the Task {task}, the above exception occurred.") from e
+            except Exception as e:
+                future.set_exception(e)
 
     async def _update(self):
         for task_type, tasks in self.task_queues.items():

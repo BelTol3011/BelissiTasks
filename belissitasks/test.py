@@ -17,14 +17,14 @@ class NumberedTaskHandler(AbstractTaskHandler):
 
 
 class NumberedTask(AbstractTask):
-    def __init__(self, factor: int = 1):
-        self.factor = factor
+    def __init__(self, dividend: int = 1):
+        self.dividend = dividend
 
     async def run(self, number: int) -> Any:
-        print(f"NUMBER {number} FACTOR {self.factor}")
-        await asyncio.sleep(self.factor)
+        print(f"NUMBER {number} DIV {self.dividend}")
+        await asyncio.sleep(self.dividend)
 
-        return number * self.factor
+        return number / self.dividend
 
 
 async def main():
@@ -35,12 +35,13 @@ async def main():
 
     queue.start()
 
-    out = queue.accept_task(NumberedTask(1))
-    out1 = queue.accept_task(NumberedTask(2))
-    out2 = queue.accept_task(NumberedTask(3))
-    out3 = queue.accept_task(NumberedTask(4))
+    print(await asyncio.gather(queue.accept_task(NumberedTask(1)),
+                               queue.accept_task(NumberedTask(2)),
+                               queue.accept_task(NumberedTask(3)),
+                               queue.accept_task(NumberedTask(4)),
+                               queue.accept_task(NumberedTask(5)),
+                               queue.accept_task(NumberedTask(0))))
 
-    print(await asyncio.gather(out, out1, out2, out3))
 
 if __name__ == "__main__":
     asyncio.run(main())
