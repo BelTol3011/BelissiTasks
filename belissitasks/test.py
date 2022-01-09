@@ -20,11 +20,21 @@ class NumberedTask(AbstractTask):
     def __init__(self, dividend: int = 1):
         self.dividend = dividend
 
-    async def run(self, number: int) -> Any:
+    async def run(self, number: int):
         print(f"NUMBER {number} DIV {self.dividend}")
         await asyncio.sleep(self.dividend)
 
         return number / self.dividend
+
+
+class HighPriorityTask(AbstractTask):
+    def __init__(self, priority=10):
+        self.priority = priority
+
+    async def run(self):
+        print("HIGH PRIO", self.priority)
+
+        return self.priority
 
 
 async def main():
@@ -35,10 +45,14 @@ async def main():
 
     queue.start()
 
-    print(await asyncio.gather(queue.accept_task(NumberedTask(1)),
+    print(await asyncio.gather(queue.accept_task(HighPriorityTask(8)),
+                               queue.accept_task(NumberedTask(1)),
                                queue.accept_task(NumberedTask(2)),
+                               queue.accept_task(HighPriorityTask(3)),
                                queue.accept_task(NumberedTask(3)),
                                queue.accept_task(NumberedTask(4)),
+                               queue.accept_task(HighPriorityTask(2)),
+                               queue.accept_task(HighPriorityTask(5)),
                                queue.accept_task(NumberedTask(5)),
                                queue.accept_task(NumberedTask(0))))
 

@@ -6,6 +6,8 @@ from typing import Any
 
 
 class AbstractTask(abc.ABC):
+    priority: int = 0
+
     @abc.abstractmethod
     async def run(self, *args, **kwargs) -> Any:
         ...
@@ -58,10 +60,6 @@ class TaskQueue:
             else:
                 result = await task_handler.exec_task(task=task)
 
-            if task_handler is not None:
-                # make the task_handler available again
-                self.register_task_handler(task_handler, task_type)
-
             # set the result of the future
             future.set_result(result)
         except Exception as e:
@@ -69,16 +67,25 @@ class TaskQueue:
                 raise Exception(f"During the execution of the Task {task}, the above exception occurred.") from e
             except Exception as e:
                 future.set_exception(e)
+        finally:
+            if task_handler is not None:
+                # make the task_handler available again
+                self.register_task_handler(task_handler, task_type)
 
-    async def _update(self):
+    def _update(self):
         for task_type, tasks in self.task_queues.items():
+            # sort after priority (higher priority first)
+            tasks.sort(key=lambda task_and_future: task_and_future[0].priority, reverse=True)
+
             if task_type not in self.task_handler_queues:
                 # use no task handler, just execute
-                for i, (task, future) in enumerate(tasks):
+                for task, future in tasks:
                     asyncio.create_task(self._start_task(task, task_type, future, None))
 
-                    # remove the task from its queue
-                    del self.task_queues[task_type][i]
+                # remove the tasks from the queue
+                self.task_queues[task_type] = []
+
+                continue
 
             # available AbstractTaskHandlers will be in task_handler_queues
             for (task, future), task_handler in zip(tasks, self.task_handler_queues[task_type]):
@@ -100,7 +107,7 @@ class TaskQueue:
             self.update_event.clear()
 
             # process
-            await self._update()
+            self._update()
 
     def start(self):
         """Starts the event loop of the queue."""
