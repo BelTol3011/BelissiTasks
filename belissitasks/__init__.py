@@ -9,7 +9,7 @@ class AbstractTask(abc.ABC):
     priority: int = 0
 
     @abc.abstractmethod
-    async def run(self, *args, **kwargs) -> Any:
+    async def run(self, task_queue: "TaskQueue", *args, **kwargs) -> Any:
         ...
 
 
@@ -17,14 +17,14 @@ class AbstractTaskHandler(abc.ABC):
     """This is basically a "worker"."""
 
     @abc.abstractmethod
-    async def exec_task(self, task: AbstractTask) -> Any:
+    async def exec_task(self, task_queue: "TaskQueue", task: AbstractTask) -> Any:
         """This function should await the task's run() function with any special args and return its result."""
 
 
 class TaskQueue:
     def __init__(self):
-        self.task_queues: dict[type, list[tuple[AbstractTask, asyncio.Future]]] = defaultdict(lambda: [])
-        self.task_handler_queues: dict[type, list[AbstractTaskHandler]] = defaultdict(lambda: [])
+        self.task_queues: dict[type, list[tuple[AbstractTask, asyncio.Future]]] = defaultdict(list)
+        self.task_handler_queues: dict[type, list[AbstractTaskHandler]] = defaultdict(list)
 
         self.update_event = asyncio.Event()
         self.is_running = False
@@ -56,9 +56,9 @@ class TaskQueue:
             # start the task
             if task_handler is None:
                 # if no task_handler is specified, await the task directly without a handler
-                result = await task.run()
+                result = await task.run(task_queue=self)
             else:
-                result = await task_handler.exec_task(task=task)
+                result = await task_handler.exec_task(task_queue=self, task=task)
 
             # set the result of the future
             future.set_result(result)

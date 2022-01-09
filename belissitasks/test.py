@@ -4,23 +4,23 @@ from belissitasks import *
 class TrivialTaskHandler(AbstractTaskHandler):
     """This TaskHandler just executes any incoming tasks with no args."""
 
-    async def exec_task(self, task: AbstractTask) -> Any:
-        return await task.run()
+    async def exec_task(self, task_queue: TaskQueue, task: AbstractTask) -> Any:
+        return await task.run(task_queue=task_queue)
 
 
 class NumberedTaskHandler(AbstractTaskHandler):
     def __init__(self, number: int):
         self.number = number
 
-    async def exec_task(self, task: AbstractTask) -> Any:
-        return await task.run(self.number)
+    async def exec_task(self, task_queue: TaskQueue, task: AbstractTask) -> Any:
+        return await task.run(task_queue, self.number)
 
 
 class NumberedTask(AbstractTask):
     def __init__(self, dividend: int = 1):
         self.dividend = dividend
 
-    async def run(self, number: int):
+    async def run(self, task_queue: TaskQueue, number: int):
         print(f"NUMBER {number} DIV {self.dividend}")
         await asyncio.sleep(self.dividend)
 
@@ -31,7 +31,7 @@ class HighPriorityTask(AbstractTask):
     def __init__(self, priority=10):
         self.priority = priority
 
-    async def run(self):
+    async def run(self, task_queue: TaskQueue):
         print("HIGH PRIO", self.priority)
 
         return self.priority
