@@ -45,6 +45,8 @@ async def main():
 
     queue.start()
 
+    print(queue.accept_task(NumberedTask(666)))
+
     print(await asyncio.gather(queue.accept_task(HighPriorityTask(8)),
                                queue.accept_task(NumberedTask(1)),
                                queue.accept_task(NumberedTask(2)),
