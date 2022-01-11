@@ -5,12 +5,22 @@ from collections import defaultdict
 from typing import Any
 
 
+def _self_repr(self: object) -> str:
+    fields = {name: getattr(self, name) for name in self.__fields__} if hasattr(self, "__fields__") else self.__dict__
+
+    # I peeked a bit into the implementation of _repr_fn in dataclasses
+    return self.__class__.__qualname__ + "(" + \
+           ", ".join([f"{name}={value!r}" for name, value in fields.items()]) + ")"
+
+
 class AbstractTask(abc.ABC):
     priority: int = 0
 
     @abc.abstractmethod
     async def run(self, task_queue: "TaskQueue", *args, **kwargs) -> Any:
         ...
+
+    __repr__ = _self_repr
 
 
 class AbstractTaskHandler(abc.ABC):
@@ -19,6 +29,8 @@ class AbstractTaskHandler(abc.ABC):
     @abc.abstractmethod
     async def exec_task(self, task_queue: "TaskQueue", task: AbstractTask) -> Any:
         """This function should await the task's run() function with any special args and return its result."""
+
+    __repr__ = _self_repr
 
 
 class TaskQueue:
